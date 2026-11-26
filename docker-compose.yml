@@ -1,0 +1,72 @@
+networks:
+  edupilot-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  uploads_data:
+
+services:
+  # ─────────────────────────────────────────────────────────────────────────────
+  # PostgreSQL 16 with pgvector extension
+  # ─────────────────────────────────────────────────────────────────────────────
+  postgres:
+    image: ankane/pgvector:v0.5.1
+    container_name: edupilot-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB in backend/.env}
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in backend/.env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in backend/.env}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - edupilot-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # FastAPI Backend
+  # ─────────────────────────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: production
+    container_name: edupilot-backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in backend/.env to use the postgres service}
+    ports:
+      - "8000:8000"
+    volumes:
+      - uploads_data:/app/app/storage/uploads
+    networks:
+      - edupilot-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # React Frontend (Nginx)
+  # ─────────────────────────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: edupilot-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    networks:
+      - edupilot-network
+    depends_on:
+      - backend

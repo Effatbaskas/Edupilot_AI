@@ -1,0 +1,103 @@
+# ──────────────────────────────────────────
+# EduPilot AI — .gitignore
+# ──────────────────────────────────────────
+
+# Environment files — NEVER commit secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.pyd
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+parts/
+var/
+sdist/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-link
+MANIFEST
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+.Python
+
+# Pytest / test artifacts
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+*.lcov
+test-results/
+junit.xml
+
+# Type checkers & linters
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.ruff_cache/
+
+# Node / Frontend
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.pnpm-store/
+*.tsbuildinfo
+.turbo/
+
+# Alembic
+backend/alembic/versions/*.pyc
+
+# Uploads — do NOT commit user files
+backend/app/storage/uploads/
+uploads/
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# OS generated
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V500
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.iml
+
+# Docker
+docker-compose.override.yml
+
+# Certificates
+*.pem
+*.key
+*.crt
+*.csr
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
