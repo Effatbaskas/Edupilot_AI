@@ -1,5 +1,6 @@
 from functools import lru_cache
 from typing import List
+from urllib.parse import urlsplit
 
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -35,11 +36,38 @@ class Settings(BaseSettings):
 
     # CORS
     # String avoids pydantic-settings JSON decoding before the comma-list parser.
-    CORS_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
+    CORS_ORIGINS: str = ""
 
     # App
     ENVIRONMENT: str = "development"
     LOG_LEVEL: str = "INFO"
+
+    @field_validator("CORS_ORIGINS")
+    @classmethod
+    def validate_cors_origins(cls, value: str) -> str:
+        origins = [origin.strip() for origin in value.split(",") if origin.strip()]
+        if "*" in origins:
+            raise ValueError("CORS_ORIGINS must list explicit origins; wildcards are not allowed")
+
+        for origin in origins:
+            try:
+                parsed = urlsplit(origin)
+                parsed.port  # Access validates that any supplied port is numeric and in range.
+            except ValueError as exc:
+                raise ValueError("CORS_ORIGINS contains an invalid origin") from exc
+            if (
+                parsed.scheme not in {"http", "https"}
+                or not parsed.netloc
+                or not parsed.hostname
+                or parsed.username is not None
+                or parsed.password is not None
+                or parsed.path not in {"", "/"}
+                or parsed.query
+                or parsed.fragment
+            ):
+                raise ValueError("CORS_ORIGINS entries must be HTTP(S) origins without paths or credentials")
+
+        return ",".join(origins)
 
     @field_validator("AI_MODE")
     @classmethod
@@ -76,9 +104,11 @@ class Settings(BaseSettings):
         return value
 
     @model_validator(mode="after")
-    def validate_production_database(self):
+    def validate_production_settings(self):
         if self.is_production and not self.DATABASE_URL.startswith("postgresql+asyncpg://"):
             raise ValueError("Production must use PostgreSQL with asyncpg")
+        if self.is_production and not self.CORS_ORIGINS:
+            raise ValueError("CORS_ORIGINS must be configured in production")
         return self
 
     @property
@@ -87,7 +117,10 @@ class Settings(BaseSettings):
 
     @property
     def cors_origins(self) -> List[str]:
-        return [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
+        origins = [origin.rstrip("/") for origin in self.CORS_ORIGINS.split(",") if origin]
+        if not origins and self.is_development:
+            return ["http://localhost:5173", "http://localhost:3000"]
+        return origins
 
     @property
     def is_development(self) -> bool:
