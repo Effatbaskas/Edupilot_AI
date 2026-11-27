@@ -1,6 +1,8 @@
 import axios from 'axios'
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || (
+  import.meta.env.PROD ? 'https://edupilot-api-3i5i.onrender.com' : ''
+)
 
 const api = axios.create({
   baseURL: BASE_URL,
